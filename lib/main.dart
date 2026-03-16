@@ -1,122 +1,130 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'features/auth/presentation/screens/login_screen.dart';
+import 'features/home/presentation/screens/home_screen.dart';
+import 'features/bulletin/presentation/screens/bulletin_screen.dart';
+import 'features/giving/presentation/screens/giving_screen.dart';
+import 'features/bulletin/presentation/screens/edit_bulletin_screen.dart';
 
-void main() {
-  runApp(const MyApp());
-}
+// --- 1. Router Configuration ---
+final GoRouter _router = GoRouter(
+  initialLocation: '/',
+  routes: [
+    GoRoute(path: '/', builder: (context, state) => const LoginScreen()),
+    GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
+    GoRoute(path: '/bulletin', builder: (context, state) => const BulletinScreen()),
+    GoRoute(path: '/giving', builder: (context, state) => const GivingScreen()),
+    GoRoute(path: '/edit-bulletin', builder: (context, state) => const EditBulletinScreen()),
+  ],
+);
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+void main() => runApp(const APIUBulletinApp());
 
-  // This widget is the root of your application.
+// --- 2. Main App Widget ---
+class APIUBulletinApp extends StatelessWidget {
+  const APIUBulletinApp({super.key});
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+    return MaterialApp.router(
+      title: 'APIU Bulletin',
+      theme: _buildThemeData(),
+      routerConfig: _router,
+      debugShowCheckedModeBanner: false,
     );
   }
-}
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+  // --- 3. Theme Definition ---
+  ThemeData _buildThemeData() {
+    // --- Base Colors (from UI Specification) ---
+    const Color primaryColor = Color.fromAHSL(210, 0.52, 0.55); // HSL 210 52% 55% -> Steel Blue
+    const Color accentColor = Color.fromAHSL(180, 0.70, 0.45);  // HSL 180 70% 45% -> Teal
+    const Color backgroundColor = Color.fromAHSL(210, 0.14, 0.95); // HSL 210 14% 95% -> Light Grey Blue
+    const Color cardColor = Colors.white;
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
+    // --- Base Text Theme ---
+    final baseTextTheme = GoogleFonts.ptSansTextTheme();
 
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
+    final textTheme = baseTextTheme.copyWith(
+      headlineSmall: baseTextTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold, letterSpacing: -0.5),
+      headlineMedium: baseTextTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold, letterSpacing: -0.5),
+      titleLarge: baseTextTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+      bodyLarge: baseTextTheme.bodyLarge?.copyWith(fontSize: 16),
+      bodyMedium: baseTextTheme.bodyMedium?.copyWith(fontSize: 14),
+    ).apply(
+      bodyColor: primaryColor.withOpacity(0.8),
+      displayColor: primaryColor,
+    );
 
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+    return ThemeData(
+      // --- Core Colors ---
+      scaffoldBackgroundColor: backgroundColor,
+      primaryColor: primaryColor,
+      colorScheme: ColorScheme.fromSwatch().copyWith(
+        primary: primaryColor,
+        secondary: accentColor,
+        background: backgroundColor,
+        surface: cardColor,
+        onPrimary: Colors.white,
+        onSecondary: Colors.white,
+        onSurface: primaryColor.withOpacity(0.8),
+        onError: Colors.white,
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
+      
+      // --- Typography ---
+      textTheme: textTheme,
+      
+      // --- Component Themes ---
+      appBarTheme: AppBarTheme(
+        backgroundColor: primaryColor,
+        foregroundColor: Colors.white,
+        elevation: 2,
+        titleTextStyle: textTheme.headlineSmall?.copyWith(color: Colors.white),
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+
+      cardTheme: CardTheme(
+        elevation: 2,
+        color: cardColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.0), // 0.75rem ~ 12px
+        ),
+        shadowColor: primaryColor.withOpacity(0.1),
+      ),
+
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: accentColor,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          textStyle: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: backgroundColor.withOpacity(0.8),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.0),
+          borderSide: BorderSide.none,
+        ),
+        prefixIconColor: primaryColor.withOpacity(0.6),
+      ),
+
+      tabBarTheme: TabBarTheme(
+        indicator: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(12.0),
+          boxShadow: [BoxShadow(color: primaryColor.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2))],
+        ),
+        labelColor: primaryColor,
+        unselectedLabelColor: primaryColor.withOpacity(0.7),
+        indicatorSize: TabBarIndicatorSize.tab,
+      ),
+
+      useMaterial3: true,
     );
   }
 }
