@@ -1,189 +1,327 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:go_router/go_router.dart'; // 添加此行
+import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
+import '../../../auth/presentation/providers/user_provider.dart';
+// ignore: unused_import
+import '../../../sabbath/data/sabbath_info_service.dart';
+import '../../../../core/services/sunset_service.dart';
 
-class HomeScreen extends StatelessWidget {
+// ... 其余代码保持不变（与之前提供的 home_screen.dart 相同）
+
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
-  // 常量定义（保持与之前屏幕一致的命名风格）
-  static const double _paddingAll = 16.0;
-  static const double _spacingSmall = 8.0;
-  static const double _spacingMedium = 24.0;
-  static const double _iconSizeLarge = 40.0;
-  static const double _cardElevation = 4.0;
-  static const double _cardPaddingAll = 20.0;
-  static const double _gridCrossAxisSpacing = 16.0;
-  static const double _gridMainAxisSpacing = 16.0;
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  late DateTime _fridaySunset;
+  late DateTime _saturdaySunset;
+  late String _sabbathMessage;
+  late Color _messageColor;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSunsetTimes();
+  }
+
+  void _loadSunsetTimes() {
+    // 获取预设的日落时间
+    _fridaySunset = SunsetService.getThisFridaySunset();
+    _saturdaySunset = SunsetService.getThisSaturdaySunset();
+    _updateSabbathMessage();
+  }
+
+  void _updateSabbathMessage() {
+    final now = DateTime.now();
+    final oneHourBeforeFriday =
+        _fridaySunset.subtract(const Duration(hours: 1));
+
+    if (now.isAfter(_fridaySunset) && now.isBefore(_saturdaySunset)) {
+      // 当前在安息日内
+      _sabbathMessage = '✨ Shabbat Shalom! ✨';
+      _messageColor = Colors.purple;
+    } else if (now.isAfter(oneHourBeforeFriday) &&
+        now.isBefore(_fridaySunset)) {
+      // 安息日即将开始（1小时内）
+      _sabbathMessage = '🕯️ Sabbath is coming soon 🕯️';
+      _messageColor = Colors.orange;
+    } else if (now.isBefore(_fridaySunset)) {
+      // 距离周五日落还有时间
+      final difference = _fridaySunset.difference(now);
+      final days = difference.inDays;
+      final hours = difference.inHours % 24;
+      if (days > 0) {
+        _sabbathMessage = 'Next Sabbath in $days days $hours hours';
+      } else {
+        _sabbathMessage = 'Next Sabbath in $hours hours';
+      }
+      _messageColor = Colors.blue;
+    } else {
+      // 安息日已过，计算到下一个周五
+      final nextFriday = _fridaySunset.add(const Duration(days: 7));
+      final difference = nextFriday.difference(now);
+      final days = difference.inDays;
+      final hours = difference.inHours % 24;
+      if (days > 0) {
+        _sabbathMessage = 'Next Sabbath in $days days $hours hours';
+      } else {
+        _sabbathMessage = 'Next Sabbath in $hours hours';
+      }
+      _messageColor = Colors.grey;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final textTheme = theme.textTheme;
+    final user = context.watch<UserProvider>().currentUser;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('APIU Bulletin', style: theme.appBarTheme.titleTextStyle),
-        automaticallyImplyLeading: false, // No back button on home
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(_paddingAll),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: _spacingSmall),
-            _buildWelcomeHeader(textTheme, theme),
-            const SizedBox(height: _spacingMedium),
-            _buildSabbathCard(context),
-            const SizedBox(height: _spacingMedium),
-            _buildFeatureGrid(context),
-          ],
-        ),
-      ),
-    );
-  }
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar(
+            expandedHeight: 160,
+            floating: false,
+            pinned: true,
+            backgroundColor: theme.primaryColor,
+            flexibleSpace: FlexibleSpaceBar(
+              title: Text(
+                user != null ? 'Welcome, ${user.username}' : 'Welcome, Guest',
+                style: const TextStyle(color: Colors.white),
+              ),
+              background: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      theme.primaryColor,
+                      theme.primaryColor.withValues(alpha: 0.7),
+                    ],
+                  ),
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.church_rounded,
+                    size: 80,
+                    color: Colors.white.withValues(alpha: 0.2),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 安息日提醒卡片
+                  Card(
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        children: [
+                          // 动态提醒消息
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            decoration: BoxDecoration(
+                              color: _messageColor.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              _sabbathMessage,
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                color: _messageColor,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          // 日落时间
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildSunsetInfo(
+                                  context,
+                                  label: 'Friday Sunset',
+                                  time: _fridaySunset,
+                                  icon: Icons.wb_twilight_rounded,
+                                ),
+                              ),
+                              Container(
+                                width: 1,
+                                height: 40,
+                                color: Colors.grey.shade300,
+                              ),
+                              Expanded(
+                                child: _buildSunsetInfo(
+                                  context,
+                                  label: 'Saturday Sunset',
+                                  time: _saturdaySunset,
+                                  icon: Icons.wb_sunny_rounded,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
 
-  /// 构建欢迎头部
-  Widget _buildWelcomeHeader(TextTheme textTheme, ThemeData theme) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: _spacingSmall),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Welcome to the Community',
-            style: textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: theme.colorScheme.primary,
+                  // 经文卡片
+                  Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Verse of the Day',
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '"Let us not give up meeting together, as some are in the habit of doing, but encouraging one another—and all the more as you see the Day approaching."',
+                            style: theme.textTheme.bodyLarge,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '— Hebrews 10:25',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 快速操作（可选，如果不需要可以删除）
+                  Text(
+                    'Quick Actions',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              ),
             ),
           ),
-          SizedBox(height: _spacingSmall / 2), // 4px
-          Text(
-            'Stay updated with the latest announcements and events.',
-            style: textTheme.bodyLarge?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+          // 快速操作网格（保持原有）
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            sliver: SliverGrid(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 16,
+                childAspectRatio: 1.2,
+              ),
+              delegate: SliverChildListDelegate([
+                _buildActionCard(
+                  context,
+                  icon: Icons.event,
+                  title: 'Bulletin',
+                  onTap: () => context.push('/bulletin'),
+                ),
+                _buildActionCard(
+                  context,
+                  icon: Icons.volunteer_activism,
+                  title: 'Giving',
+                  onTap: () => context.push('/giving'),
+                ),
+                _buildActionCard(
+                  context,
+                  icon: Icons.groups,
+                  title: 'Volunteer',
+                  onTap: () => context.push('/volunteer'),
+                ),
+                _buildActionCard(
+                  context,
+                  icon: Icons.info,
+                  title: 'About',
+                  onTap: () => context.push('/about'),
+                ),
+              ]),
             ),
           ),
+          const SliverToBoxAdapter(child: SizedBox(height: 16)),
         ],
       ),
     );
   }
 
-  /// 构建安息日信息卡片
-  Widget _buildSabbathCard(BuildContext context) {
+  Widget _buildSunsetInfo(BuildContext context,
+      {required String label, required DateTime time, required IconData icon}) {
     final theme = Theme.of(context);
-    final textTheme = theme.textTheme;
-
-    return Card(
-      elevation: _cardElevation, // Slightly more shadow for emphasis
-      shadowColor: theme.primaryColor.withValues(alpha: 0.2),
-      child: Padding(
-        padding: const EdgeInsets.all(_cardPaddingAll),
-        child: Row(
-          children: [
-            Icon(
-              Icons.wb_twilight_rounded,
-              size: _iconSizeLarge,
-              color: theme.primaryColor,
-            ),
-            const SizedBox(width: _cardPaddingAll),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Sabbath Hours',
-                    style: textTheme.titleLarge?.copyWith(
-                      color: theme.primaryColor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: _spacingSmall - 2), // 6px
-                  Text(
-                    'Friday Sunset: 6:45 PM',
-                    style: textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
-                    ),
-                  ),
-                  Text(
-                    'Saturday Sunset: 6:45 PM',
-                    style: textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// 构建功能网格（4个卡片）
-  Widget _buildFeatureGrid(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: 2,
-      crossAxisSpacing: _gridCrossAxisSpacing,
-      mainAxisSpacing: _gridMainAxisSpacing,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
+    return Column(
       children: [
-        _buildFeatureCard(
-          context,
-          icon: Icons.article_outlined,
-          title: 'Weekly Bulletin',
-          onTap: () => context.go('/bulletin'),
+        Icon(icon, color: theme.primaryColor),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: theme.textTheme.bodySmall,
         ),
-        _buildFeatureCard(
-          context,
-          icon: Icons.event_note_outlined,
-          title: 'Upcoming Events',
-          onTap: () => context.go('/bulletin'), // Also navigate to Bulletin
-        ),
-        _buildFeatureCard(
-          context,
-          icon: Icons.volunteer_activism_outlined,
-          title: 'Giving & Tithes',
-          onTap: () => context.go('/giving'),
-        ),
-        _buildFeatureCard(
-          context,
-          icon: Icons.info_outline,
-          title: 'About Us',
-          onTap: () {
-            // TODO: Navigate to About screen when implemented
-          },
+        Text(
+          DateFormat('h:mm a').format(time),
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: theme.primaryColor,
+          ),
         ),
       ],
     );
   }
 
-  /// 构建单个功能卡片
-  Widget _buildFeatureCard(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildActionCard(BuildContext context,
+      {required IconData icon,
+      required String title,
+      required VoidCallback onTap}) {
     final theme = Theme.of(context);
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12.0),
-      child: Card(
-        elevation: 1,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Icon(icon, size: _iconSizeLarge, color: theme.colorScheme.secondary),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-          ],
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 32, color: theme.primaryColor),
+              const SizedBox(height: 8),
+              Text(
+                title,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
     );

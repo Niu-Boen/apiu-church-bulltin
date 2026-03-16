@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import '../../data/user_service.dart';
+import '../providers/user_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -9,15 +12,6 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // 常量定义
-  static const double _horizontalPadding = 32.0;
-  static const double _logoSize = 80.0;
-  static const double _spacingLarge = 48.0;
-  static const double _spacingMedium = 32.0;
-  static const double _spacingSmall = 16.0;
-  static const double _spacingTiny = 12.0;
-  static const double _spacingExtraSmall = 8.0;
-
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -36,15 +30,18 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    // 验证表单
     if (_formKey.currentState?.validate() ?? false) {
       final username = _usernameController.text;
       final password = _passwordController.text;
 
-      // 根据凭据决定角色
-      final userRole = (username == 'admin' && password == 'admin') ? 'admin' : 'user';
-      if (context.mounted) {
-        context.go('/home', extra: userRole);
+      final user = UserService().authenticate(username, password);
+      if (user != null) {
+        context.read<UserProvider>().login(user);
+        if (context.mounted) context.go('/home');
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Invalid username or password')),
+        );
       }
     }
   }
@@ -61,10 +58,7 @@ class _LoginScreenState extends State<LoginScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(dialogContext);
-              // 检查原上下文是否仍然有效
-              if (context.mounted) {
-                context.go('/home', extra: 'guest');
-              }
+              if (context.mounted) context.go('/home', extra: 'guest');
             },
             child: const Text('I UNDERSTAND'),
           ),
@@ -73,123 +67,141 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // 构建登录表单字段
-  Widget _buildUsernameField() {
-    return TextFormField(
-      controller: _usernameController,
-      decoration: const InputDecoration(
-        prefixIcon: Icon(Icons.person_outline_rounded),
-        labelText: 'Username',
-      ),
-      validator: (value) => value == null || value.isEmpty ? 'Required' : null,
-    );
-  }
-
-  Widget _buildPasswordField() {
-    return TextFormField(
-      controller: _passwordController,
-      obscureText: !_isPasswordVisible,
-      decoration: InputDecoration(
-        prefixIcon: const Icon(Icons.shield_outlined),
-        labelText: 'Password',
-        suffixIcon: IconButton(
-          icon: Icon(_isPasswordVisible ? Icons.visibility : Icons.visibility_off),
-          onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
-        ),
-      ),
-      validator: (value) => value == null || value.isEmpty ? 'Required' : null,
-    );
-  }
-
-  // 构建主要按钮（Member Login）
-  Widget _buildMemberLoginButton(ThemeData theme) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: () => _login('member'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: theme.primaryColor,
-        ),
-        child: const Text('MEMBER LOGIN'),
-      ),
-    );
-  }
-
-  // 构建访客按钮（Continue as Guest）
-  Widget _buildGuestButton(ThemeData theme) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: () => _login('guest'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: theme.colorScheme.secondary,
-        ),
-        child: const Text('CONTINUE AS GUEST'),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // final size = MediaQuery.of(context).size;
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: _horizontalPadding),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // --- Logo & Title ---
-                Icon(Icons.church_rounded, size: _logoSize, color: theme.primaryColor),
-                const SizedBox(height: _spacingSmall),
-                Text(
-                  'APIU BULLETIN',
-                  style: theme.textTheme.headlineMedium?.copyWith(
-                    color: theme.primaryColor,
-                    letterSpacing: 2.0,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              theme.primaryColor.withValues(alpha: 0.1),
+              theme.scaffoldBackgroundColor,
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // 教堂图标
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      color: theme.primaryColor.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.church_rounded,
+                      size: 60,
+                      color: theme.primaryColor,
+                    ),
                   ),
-                ),
-                const SizedBox(height: _spacingExtraSmall),
-                Text(
-                  'Your digital church companion',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.hintColor,
+                  const SizedBox(height: 24),
+                  Text(
+                    'APIU BULLETIN',
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      color: theme.primaryColor,
+                      letterSpacing: 2.0,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                const SizedBox(height: _spacingLarge),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Your digital church companion',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.hintColor,
+                    ),
+                  ),
+                  const SizedBox(height: 48),
 
-                // --- Login Form ---
-                Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      _buildUsernameField(),
-                      const SizedBox(height: _spacingSmall),
-                      _buildPasswordField(),
-                    ],
+                  // 登录卡片
+                  Card(
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          children: [
+                            TextFormField(
+                              controller: _usernameController,
+                              decoration: const InputDecoration(
+                                prefixIcon: Icon(Icons.person_outline_rounded),
+                                labelText: 'Username',
+                              ),
+                              validator: (v) =>
+                                  v == null || v.isEmpty ? 'Required' : null,
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: _passwordController,
+                              obscureText: !_isPasswordVisible,
+                              decoration: InputDecoration(
+                                prefixIcon: const Icon(Icons.shield_outlined),
+                                labelText: 'Password',
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _isPasswordVisible
+                                        ? Icons.visibility
+                                        : Icons.visibility_off,
+                                  ),
+                                  onPressed: () => setState(() =>
+                                      _isPasswordVisible = !_isPasswordVisible),
+                                ),
+                              ),
+                              validator: (v) =>
+                                  v == null || v.isEmpty ? 'Required' : null,
+                            ),
+                            const SizedBox(height: 24),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: () => _login('member'),
+                                child: const Text('MEMBER LOGIN'),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton(
+                                onPressed: () => _login('guest'),
+                                child: const Text('CONTINUE AS GUEST'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(height: _spacingMedium),
-
-                // --- Buttons ---
-                _buildMemberLoginButton(theme),
-                const SizedBox(height: _spacingTiny),
-                _buildGuestButton(theme),
-
-                const SizedBox(height: _spacingLarge),
-                Text(
-                  'DEMO CREDENTIALS\nadmin / admin',
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.hintColor,
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () => context.push('/register'),
+                    child: const Text('Create an account'),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 24),
+                  Text(
+                    'DEMO CREDENTIALS\nadmin / admin',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.hintColor,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ), 
+          ),
         ),
       ),
     );
