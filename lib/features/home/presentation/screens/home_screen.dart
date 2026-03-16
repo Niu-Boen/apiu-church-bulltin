@@ -4,6 +4,16 @@ import 'package:go_router/go_router.dart';
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
+  // 常量定义（保持与之前屏幕一致的命名风格）
+  static const double _paddingAll = 16.0;
+  static const double _spacingSmall = 8.0;
+  static const double _spacingMedium = 24.0;
+  static const double _iconSizeLarge = 40.0;
+  static const double _cardElevation = 4.0;
+  static const double _cardPaddingAll = 20.0;
+  static const double _gridCrossAxisSpacing = 16.0;
+  static const double _gridMainAxisSpacing = 16.0;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -16,15 +26,15 @@ class HomeScreen extends StatelessWidget {
         centerTitle: true,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(_paddingAll),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 8),
+            const SizedBox(height: _spacingSmall),
             _buildWelcomeHeader(textTheme, theme),
-            const SizedBox(height: 24),
+            const SizedBox(height: _spacingMedium),
             _buildSabbathCard(context),
-            const SizedBox(height: 24),
+            const SizedBox(height: _spacingMedium),
             _buildFeatureGrid(context),
           ],
         ),
@@ -32,9 +42,10 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  /// 构建欢迎头部
   Widget _buildWelcomeHeader(TextTheme textTheme, ThemeData theme) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+      padding: const EdgeInsets.symmetric(horizontal: _spacingSmall),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -45,37 +56,60 @@ class HomeScreen extends StatelessWidget {
               color: theme.colorScheme.primary,
             ),
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: _spacingSmall / 2), // 4px
           Text(
             'Stay updated with the latest announcements and events.',
-            style: textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.7)),
+            style: textTheme.bodyLarge?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+            ),
           ),
         ],
       ),
     );
   }
 
+  /// 构建安息日信息卡片
   Widget _buildSabbathCard(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
 
     return Card(
-      elevation: 4, // Slightly more shadow for emphasis
-      shadowColor: theme.primaryColor.withOpacity(0.2),
+      elevation: _cardElevation, // Slightly more shadow for emphasis
+      shadowColor: theme.primaryColor.withValues(alpha: 0.2),
       child: Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(_cardPaddingAll),
         child: Row(
           children: [
-            Icon(Icons.wb_twilight_rounded, size: 40, color: theme.primaryColor),
-            const SizedBox(width: 20),
+            Icon(
+              Icons.wb_twilight_rounded,
+              size: _iconSizeLarge,
+              color: theme.primaryColor,
+            ),
+            const SizedBox(width: _cardPaddingAll),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Sabbath Hours', style: textTheme.titleLarge?.copyWith(color: theme.primaryColor, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 6),
-                  Text('Friday Sunset: 6:45 PM', style: textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.8))),
-                  Text('Saturday Sunset: 6:45 PM', style: textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.8))),
+                  Text(
+                    'Sabbath Hours',
+                    style: textTheme.titleLarge?.copyWith(
+                      color: theme.primaryColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: _spacingSmall - 2), // 6px
+                  Text(
+                    'Friday Sunset: 6:45 PM',
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                    ),
+                  ),
+                  Text(
+                    'Saturday Sunset: 6:45 PM',
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -85,11 +119,12 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  /// 构建功能网格（4个卡片）
   Widget _buildFeatureGrid(BuildContext context) {
     return GridView.count(
       crossAxisCount: 2,
-      crossAxisSpacing: 16,
-      mainAxisSpacing: 16,
+      crossAxisSpacing: _gridCrossAxisSpacing,
+      mainAxisSpacing: _gridMainAxisSpacing,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       children: [
@@ -115,13 +150,21 @@ class HomeScreen extends StatelessWidget {
           context,
           icon: Icons.info_outline,
           title: 'About Us',
-          onTap: () {},
+          onTap: () {
+            // TODO: Navigate to About screen when implemented
+          },
         ),
       ],
     );
   }
 
-  Widget _buildFeatureCard(BuildContext context, {required IconData icon, required String title, required VoidCallback onTap}) {
+  /// 构建单个功能卡片
+  Widget _buildFeatureCard(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
     final theme = Theme.of(context);
 
     return InkWell(
@@ -133,12 +176,12 @@ class HomeScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(icon, size: 40, color: theme.colorScheme.secondary),
+            Icon(icon, size: _iconSizeLarge, color: theme.colorScheme.secondary),
             const SizedBox(height: 12),
             Text(
-              title, 
-              style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold), 
-              textAlign: TextAlign.center
+              title,
+              style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
             ),
           ],
         ),

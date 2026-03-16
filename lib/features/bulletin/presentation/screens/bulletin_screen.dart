@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../widgets/bulletin_item_model.dart';
+// 移除未使用的导入
+// import '../widgets/bulletin_item_model.dart';
 import '../../data/bulletin_data.dart';
 
 class BulletinScreen extends StatefulWidget {
@@ -11,10 +12,26 @@ class BulletinScreen extends StatefulWidget {
   State<BulletinScreen> createState() => _BulletinScreenState();
 }
 
-class _BulletinScreenState extends State<BulletinScreen> {
-  void _refresh() {
-    setState(() {});
+class _BulletinScreenState extends State<BulletinScreen> with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
+  static const double _tabBarHeight = 60.0;
+  static const double _horizontalPadding = 16.0;
+  static const double _verticalPadding = 8.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
   }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _refresh() => setState(() {});
 
   @override
   Widget build(BuildContext context) {
@@ -22,143 +39,172 @@ class _BulletinScreenState extends State<BulletinScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Worship Schedule'),
+        title: const Text('Weekly Bulletin'),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(_tabBarHeight),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: _horizontalPadding,
+              vertical: _verticalPadding,
+            ),
+            child: Container(
+              height: 45,
+              decoration: BoxDecoration(
+                color: theme.primaryColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: TabBar(
+                controller: _tabController,
+                tabs: const [
+                  Tab(text: 'Friday Evening'),
+                  Tab(text: 'Sabbath Morning'),
+                ],
+              ),
+            ),
+          ),
+        ),
         actions: [
           if (widget.isAdmin)
             IconButton(
-              icon: const Icon(Icons.add_circle_rounded),
+              icon: const Icon(Icons.add_circle_outline),
               onPressed: () => context.go('/edit-bulletin', extra: {'refresh': _refresh}),
             ),
         ],
       ),
-      body: bulletinItems.isEmpty
-          ? _buildEmptyState(theme)
-          : Stack(
-              children: [
-                // 3A. Timeline Line
-                Positioned(
-                  left: 27,
-                  top: 0,
-                  bottom: 0,
-                  child: Container(
-                    width: 2,
-                    color: theme.primaryColor,
-                  ),
-                ),
-                ListView.builder(
-                  padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-                  itemCount: bulletinItems.length,
-                  itemBuilder: (context, index) {
-                    return _buildTimelineItem(context, bulletinItems[index], theme);
-                  },
-                ),
-              ],
-            ),
-    );
-  }
-
-  Widget _buildEmptyState(ThemeData theme) {
-    return Center(
-      child: Text(
-        'No events scheduled yet.',
-        style: theme.textTheme.bodyLarge,
-      ),
-    );
-  }
-
-  Widget _buildTimelineItem(BuildContext context, BulletinItem item, ThemeData theme) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 32.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      body: TabBarView(
+        controller: _tabController,
         children: [
-          // 3C. Timeline Node
-          Container(
-            width: 24,
-            height: 24,
-            margin: const EdgeInsets.only(top: 4, right: 20),
-            decoration: BoxDecoration(
-              color: theme.cardTheme.color,
-              shape: BoxShape.circle,
-              border: Border.all(color: theme.primaryColor, width: 2),
-            ),
-          ),
-          // Event Content Card
-          Expanded(
-            child: InkWell(
-              onTap: widget.isAdmin
-                  ? () => context.go('/edit-bulletin', extra: {'item': item, 'refresh': _refresh})
-                  : null,
-              borderRadius: BorderRadius.circular(12),
-              child: Card(
-                margin: EdgeInsets.zero,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              item.title,
-                              style: theme.textTheme.titleLarge?.copyWith(fontSize: 18),
-                            ),
-                          ),
-                          Text(
-                            item.time,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.secondary,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(item.description, style: theme.textTheme.bodyMedium),
-                      if (item.servicePersonnel != null && item.servicePersonnel!.isNotEmpty) ...[
-                        const Divider(height: 24),
-                        // 3D. Personnel & Role Grid
-                        _buildPersonnelGrid(item.servicePersonnel!, theme),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
+          _buildTimeline(context, 'Friday'),
+          _buildTimeline(context, 'Saturday'),
         ],
       ),
     );
   }
 
-  Widget _buildPersonnelGrid(String personnelText, ThemeData theme) {
-    // Basic parser for "Role: Name" format
-    final parts = personnelText.split(':');
-    final role = parts.length > 1 ? parts[0].trim().toLowerCase() : 'personnel';
-    final name = parts.length > 1 ? parts[1].trim() : parts[0].trim();
+  Widget _buildTimeline(BuildContext context, String day) {
+    final items = bulletinItems.where((item) {
+      return item.time.contains(day) || (day == 'Saturday' && !item.time.contains('Friday'));
+    }).toList();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          role.toUpperCase(),
-          style: theme.textTheme.labelSmall?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: theme.primaryColor.withOpacity(0.6),
-            letterSpacing: 1.2,
+    if (items.isEmpty) {
+      return const Center(child: Text('No programs scheduled.'));
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(20),
+      itemCount: items.length,
+      itemBuilder: (context, index) {
+        final item = items[index];
+        return IntrinsicHeight(
+          key: ValueKey('${item.time}_${item.title}'),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // --- Timeline Column ---
+              Column(
+                children: [
+                  Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).primaryColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                  ),
+                  Expanded(
+                    child: Container(
+                      width: 2,
+                      color: index == items.length - 1
+                          ? Colors.transparent
+                          : Theme.of(context).primaryColor,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 20),
+              // --- Content Card ---
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 24),
+                  child: GestureDetector(
+                    onTap: widget.isAdmin
+                        ? () => context.go('/edit-bulletin', extra: {'item': item, 'refresh': _refresh})
+                        : null,
+                    child: Card(
+                      margin: EdgeInsets.zero,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.time,
+                              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                color: Theme.of(context).colorScheme.secondary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              item.title,
+                              style: Theme.of(context).textTheme.titleLarge,
+                            ),
+                            const SizedBox(height: 12),
+                            if (item.servicePersonnel != null && item.servicePersonnel!.isNotEmpty)
+                              _buildPersonnelSection(context, item.servicePersonnel!),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          name,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: theme.primaryColor,
+        );
+      },
+    );
+  }
+
+  Widget _buildPersonnelSection(BuildContext context, String personnel) {
+    final int colonIndex = personnel.indexOf(':');
+    String role, name;
+
+    if (colonIndex != -1) {
+      role = personnel.substring(0, colonIndex).trim();
+      name = personnel.substring(colonIndex + 1).trim();
+    } else {
+      role = 'Service';
+      name = personnel.trim();
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            role.toUpperCase(),
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.2,
+              color: Theme.of(context).primaryColor.withValues(alpha: 0.6),
+            ),
           ),
-        ),
-      ],
+          const SizedBox(height: 4),
+          Text(
+            name,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
