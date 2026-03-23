@@ -1,15 +1,20 @@
 import '../presentation/widgets/bulletin_item_model.dart';
 import 'package:flutter/material.dart';
+import '../../../../core/services/bulletin_storage_service.dart';
 
-/// 存储所有公告条目的静态数据列表
-final List<BulletinItem> bulletinItems = [
+/// 存储所有公告条目的数据列表
+/// 使用本地存储持久化数据
+List<BulletinItem> bulletinItems = [];
+
+/// 默认 bulletin 数据
+final List<BulletinItem> _defaultBulletins = [
   BulletinItem(
     title: 'Sabbath School Lesson',
     time: '9:30 AM',
     description: 'Join us for a deep dive into this week\'s lesson study.',
     servicePersonnel: 'Leader: Elder John Doe',
     icon: Icons.book_online,
-    publishDate: DateTime.now(), // 添加
+    publishDate: DateTime.now(),
   ),
   BulletinItem(
     title: 'Main Worship Service',
@@ -44,3 +49,31 @@ final List<BulletinItem> bulletinItems = [
     publishDate: DateTime.now(),
   ),
 ];
+
+/// 初始化 bulletin 数据
+/// 从本地存储加载数据,如果没有则使用默认数据
+Future<void> initializeBulletins() async {
+  try {
+    final loadedBulletins = await BulletinStorageService.loadBulletins();
+
+    if (loadedBulletins.isEmpty) {
+      // 首次使用,加载默认数据
+      bulletinItems = List.from(_defaultBulletins);
+      await BulletinStorageService.saveBulletins(bulletinItems);
+    } else {
+      bulletinItems = loadedBulletins;
+    }
+  } catch (e) {
+    // 加载失败,使用默认数据
+    bulletinItems = List.from(_defaultBulletins);
+  }
+}
+
+/// 保存当前 bulletins 到本地存储
+Future<void> saveCurrentBulletins() async {
+  try {
+    await BulletinStorageService.saveBulletins(bulletinItems);
+  } catch (e) {
+    debugPrint('Error saving bulletins: $e');
+  }
+}

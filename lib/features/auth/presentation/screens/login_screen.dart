@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import '../../data/user_service.dart';
+import '../../../../core/services/auth_api_service.dart';
+import '../../../../core/models/user_model.dart';
+import '../../../../core/widgets/soft_button.dart';
 import '../providers/user_provider.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -16,6 +18,9 @@ class _LoginScreenState extends State<LoginScreen> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
+  bool _isLoading = false;
+
+  final AuthApiService _authService = AuthApiService();
 
   @override
   void dispose() {
@@ -24,24 +29,75 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _login(String role) {
+  Future<void> _login(String role) async {
     if (role == 'guest') {
       _showVisitorNotice();
       return;
     }
 
     if (_formKey.currentState?.validate() ?? false) {
-      final username = _usernameController.text;
-      final password = _passwordController.text;
+      setState(() => _isLoading = true);
 
-      final user = UserService().authenticate(username, password);
-      if (user != null) {
-        context.read<UserProvider>().login(user);
-        if (context.mounted) context.go('/home');
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid username or password')),
+      try {
+        final username = _usernameController.text;
+        final password = _passwordController.text;
+
+        debugPrint('Attempting login with username: $username');
+
+        // 登录
+        final loginResponse = await _authService.login(
+          username: username,
+          password: password,
         );
+        debugPrint('Login response: $loginResponse');
+
+        // 从登录响应中提取用户数据
+        Map<String, dynamic>? userData;
+        final innerData = loginResponse['data'] as Map<String, dynamic>?;
+
+        if (innerData != null) {
+          if (innerData.containsKey('user')) {
+            userData = innerData['user'] as Map<String, dynamic>?;
+            debugPrint('User data from login response (user field): $userData');
+          } else if (innerData.containsKey('id') || innerData.containsKey('username')) {
+            userData = innerData;
+            debugPrint('User data from login response (direct): $userData');
+          }
+        }
+
+        // 如果登录响应中没有用户数据,则调用 getCurrentUser()
+        if (userData == null || userData.isEmpty) {
+          debugPrint('No user data in login response, calling getCurrentUser()');
+          userData = await _authService.getCurrentUser();
+          debugPrint('User data from getCurrentUser(): $userData');
+        }
+
+        if (userData.isEmpty) {
+          throw Exception('Failed to retrieve user information');
+        }
+
+        debugPrint('Creating UserModel from data: $userData');
+        final userModel = UserModel.fromJson(userData);
+        debugPrint('UserModel created: ${userModel.username}, ${userModel.role}');
+
+        if (mounted) {
+          context.read<UserProvider>().login(userModel);
+          context.go('/home');
+        }
+      } catch (e, stackTrace) {
+        debugPrint('Login error: $e');
+        debugPrint('Stack trace: $stackTrace');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Login failed: ${e.toString()}'),
+              duration: const Duration(seconds: 3),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
       }
     }
   }
@@ -58,7 +114,7 @@ class _LoginScreenState extends State<LoginScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(dialogContext);
-              if (context.mounted) context.go('/home', extra: 'guest');
+              if (mounted) context.go('/home', extra: 'guest');
             },
             child: const Text('I UNDERSTAND'),
           ),
@@ -125,37 +181,84 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // 登录卡片
                   Card(
-                    elevation: 4,
+                    elevation: 8,
+                    shadowColor: theme.primaryColor.withValues(alpha: 0.2),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(24),
                     ),
                     child: Padding(
-                      padding: const EdgeInsets.all(24),
+                      padding: const EdgeInsets.all(32),
                       child: Form(
                         key: _formKey,
                         child: Column(
                           children: [
+                            Text(
+                              'Welcome Back',
+                              style: theme.textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: theme.primaryColor,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Sign in to continue',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.hintColor,
+                              ),
+                            ),
+                            const SizedBox(height: 32),
                             TextFormField(
                               controller: _usernameController,
-                              decoration: const InputDecoration(
-                                prefixIcon: Icon(Icons.person_outline_rounded),
+                              enabled: !_isLoading,
+                              decoration: InputDecoration(
+                                prefixIcon: const Icon(Icons.person_outline_rounded),
                                 labelText: 'Username',
+                                filled: true,
+                                fillColor: theme.colorScheme.surface.withValues(alpha: 0.5),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide.none,
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(color: theme.primaryColor.withValues(alpha: 0.2)),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(color: theme.primaryColor, width: 2),
+                                ),
                               ),
                               validator: (v) =>
                                   v == null || v.isEmpty ? 'Required' : null,
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 20),
                             TextFormField(
                               controller: _passwordController,
                               obscureText: !_isPasswordVisible,
+                              enabled: !_isLoading,
                               decoration: InputDecoration(
                                 prefixIcon: const Icon(Icons.shield_outlined),
                                 labelText: 'Password',
+                                filled: true,
+                                fillColor: theme.colorScheme.surface.withValues(alpha: 0.5),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide.none,
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(color: theme.primaryColor.withValues(alpha: 0.2)),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(color: theme.primaryColor, width: 2),
+                                ),
                                 suffixIcon: IconButton(
                                   icon: Icon(
                                     _isPasswordVisible
                                         ? Icons.visibility
                                         : Icons.visibility_off,
+                                    color: theme.hintColor,
                                   ),
                                   onPressed: () => setState(() =>
                                       _isPasswordVisible = !_isPasswordVisible),
@@ -164,20 +267,46 @@ class _LoginScreenState extends State<LoginScreen> {
                               validator: (v) =>
                                   v == null || v.isEmpty ? 'Required' : null,
                             ),
-                            const SizedBox(height: 24),
+                            const SizedBox(height: 32),
                             SizedBox(
                               width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed: () => _login('member'),
-                                child: const Text('MEMBER LOGIN'),
+                              height: 56,
+                              child: SoftButton(
+                                onPressed: _isLoading ? null : () => _login('member'),
+                                child: _isLoading
+                                    ? const SizedBox(
+                                        height: 24,
+                                        width: 24,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4A7A9C)),
+                                        ),
+                                      )
+                                    : const Text(
+                                        'MEMBER LOGIN',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 0.5,
+                                          color: Color(0xFF4A7A9C),
+                                        ),
+                                      ),
                               ),
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 16),
                             SizedBox(
                               width: double.infinity,
-                              child: OutlinedButton(
-                                onPressed: () => _login('guest'),
-                                child: const Text('CONTINUE AS GUEST'),
+                              height: 56,
+                              child: SoftButton(
+                                onPressed: _isLoading ? null : () => _login('guest'),
+                                child: Text(
+                                  'CONTINUE AS GUEST',
+                                  style: TextStyle(
+                                    color: theme.primaryColor,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
                               ),
                             ),
                           ],
@@ -185,17 +314,55 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
                   TextButton(
                     onPressed: () => context.push('/register'),
-                    child: const Text('Create an account'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: theme.primaryColor,
+                    ),
+                    child: Text(
+                      'Create an account',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: theme.primaryColor,
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'DEMO CREDENTIALS\nadmin / admin',
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.hintColor,
+                  const SizedBox(height: 32),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    decoration: BoxDecoration(
+                      color: theme.primaryColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: theme.primaryColor.withValues(alpha: 0.2),
+                        width: 1,
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          color: theme.primaryColor,
+                          size: 24,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Demo Credentials',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: theme.primaryColor,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Admin: admin / admin123\nEditor: editor / editor123',
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.hintColor,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],

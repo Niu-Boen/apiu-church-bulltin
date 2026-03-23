@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
-import '../../domain/models/user.dart';
+import '../../../../core/models/user_model.dart';
 
 class UserProvider extends ChangeNotifier {
-  User? _currentUser;
+  UserModel? _currentUser;
 
-  User? get currentUser => _currentUser;
-  bool get isAdmin => _currentUser?.role == UserRole.admin;
+  UserModel? get currentUser => _currentUser;
+  bool get isAdmin => _currentUser?.isAdmin ?? false;
+  bool get isEditor => _currentUser?.isEditor ?? false;
 
-  void login(User user) {
+  void login(UserModel user) {
     _currentUser = user;
     notifyListeners();
   }

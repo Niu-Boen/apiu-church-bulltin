@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../data/bulletin_data.dart';
 import '../widgets/bulletin_item_model.dart';
+import '../../../../core/widgets/soft_button.dart';
+import '../../../../core/services/bulletin_storage_service.dart';
 
 class EditBulletinScreen extends StatefulWidget {
   final BulletinItem? item;
   final Function? onSave;
+  final int? dayOfWeek; // 5 = Friday, 6 = Saturday
 
-  const EditBulletinScreen({super.key, this.item, this.onSave});
+  const EditBulletinScreen({super.key, this.item, this.onSave, this.dayOfWeek});
 
   @override
   State<EditBulletinScreen> createState() => _EditBulletinScreenState();
@@ -77,50 +80,101 @@ class _EditBulletinScreenState extends State<EditBulletinScreen> {
     );
   }
 
-  void _save() {
-    if (!_validateInputs()) return;
+  // 计算下一个指定的星期几
+  DateTime _getNextDayOfWeek(int targetDayOfWeek) {
+    DateTime now = DateTime.now();
+    int currentDayOfWeek = now.weekday;
+    int daysUntilTarget = (targetDayOfWeek - currentDayOfWeek + 7) % 7;
 
-    if (widget.item == null) {
-      // 添加新条目
-      bulletinItems.add(
-        BulletinItem(
-          title: _titleController.text.trim(),
-          time: _timeController.text.trim(),
-          description: _descriptionController.text.trim(),
-          servicePersonnel: _personnelController.text.trim(),
-          icon: _selectedIcon!,
-          publishDate: DateTime.now(), // 新增
-          isDraft: false,               // 默认为非草稿
-          scheduledDate: null,
-        ),
-      );
-    } else {
-      // 更新现有条目
-      final index = bulletinItems.indexOf(widget.item!);
-      if (index != -1) {
-        bulletinItems[index] = BulletinItem(
-          title: _titleController.text.trim(),
-          time: _timeController.text.trim(),
-          description: _descriptionController.text.trim(),
-          servicePersonnel: _personnelController.text.trim(),
-          icon: _selectedIcon!,
-          publishDate: widget.item!.publishDate, // 保留原发布日期
-          isDraft: widget.item!.isDraft,          // 保留原草稿状态
-          scheduledDate: widget.item!.scheduledDate,
-        );
-      }
+    // 如果今天是目标星期几，返回今天；否则返回下一天
+    if (daysUntilTarget == 0) {
+      return now;
     }
 
-    widget.onSave?.call();
-    if (context.mounted) context.pop();
+    return now.add(Duration(days: daysUntilTarget));
   }
 
-  void _delete() {
+  void _save() async {
+    if (!_validateInputs()) return;
+
+    try {
+      if (widget.item == null) {
+        // 添加新条目 - 根据指定的星期几设置 publishDate
+        DateTime targetDate;
+        if (widget.dayOfWeek != null) {
+          // 计算下一个指定的星期几
+          targetDate = _getNextDayOfWeek(widget.dayOfWeek!);
+        } else {
+          targetDate = DateTime.now();
+        }
+
+        final newItem = BulletinItem(
+          title: _titleController.text.trim(),
+          time: _timeController.text.trim(),
+          description: _descriptionController.text.trim(),
+          servicePersonnel: _personnelController.text.trim(),
+          icon: _selectedIcon!,
+          publishDate: targetDate,
+          isDraft: false,
+          scheduledDate: null,
+        );
+
+        // 保存到内存列表
+        bulletinItems.add(newItem);
+
+        // 保存到本地存储
+        await BulletinStorageService.addBulletin(newItem);
+      } else {
+        // 更新现有条目
+        final newItem = BulletinItem(
+          title: _titleController.text.trim(),
+          time: _timeController.text.trim(),
+          description: _descriptionController.text.trim(),
+          servicePersonnel: _personnelController.text.trim(),
+          icon: _selectedIcon!,
+          publishDate: widget.item!.publishDate,
+          isDraft: widget.item!.isDraft,
+          scheduledDate: widget.item!.scheduledDate,
+        );
+
+        // 更新内存列表
+        final index = bulletinItems.indexOf(widget.item!);
+        if (index != -1) {
+          bulletinItems[index] = newItem;
+
+          // 更新本地存储
+          await BulletinStorageService.updateBulletin(widget.item!, newItem);
+        }
+      }
+
+      widget.onSave?.call();
+      if (mounted) {
+        _showSnackBar('Saved successfully!');
+        context.pop();
+      }
+    } catch (e) {
+      _showSnackBar('Error saving: ${e.toString()}');
+    }
+  }
+
+  void _delete() async {
     // 仅当编辑模式下且条目存在于列表中时执行删除
     if (widget.item != null && bulletinItems.contains(widget.item)) {
-      bulletinItems.remove(widget.item);
-      widget.onSave?.call();
-      if (context.mounted) context.pop();
+      try {
+        // 从内存列表删除
+        bulletinItems.remove(widget.item);
+
+        // 从本地存储删除
+        await BulletinStorageService.deleteBulletin(widget.item!);
+
+        widget.onSave?.call();
+        if (mounted) {
+          _showSnackBar('Deleted successfully!');
+          context.pop();
+        }
+      } catch (e) {
+        _showSnackBar('Error deleting: ${e.toString()}');
+      }
     }
   }
 
@@ -165,9 +219,20 @@ class _EditBulletinScreenState extends State<EditBulletinScreen> {
               ),
               _buildIconDropdown(),
               const SizedBox(height: _buttonSpacing),
-              ElevatedButton(
-                onPressed: _save,
-                child: const Text('Save'),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: SoftButton(
+                  onPressed: _save,
+                  child: const Text(
+                    'Save',
+                    style: TextStyle(
+                      color: Color(0xFF4A7A9C),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
