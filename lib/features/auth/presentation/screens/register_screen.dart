@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/services/auth_api_service.dart';
 import '../../../../core/models/user_model.dart';
+import '../../../../core/widgets/soft_button.dart';
 import '../providers/user_provider.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -105,7 +106,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24),
-              child:               Card(
+              child: Card(
                 elevation: 8,
                 shadowColor: theme.primaryColor.withValues(alpha: 0.2),
                 shape: RoundedRectangleBorder(
@@ -284,21 +285,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         SizedBox(
                           width: double.infinity,
                           height: 56,
-                          child: ElevatedButton(
+                          child: SoftButton(
                             onPressed: _isLoading ? null : _register,
-                            style: ElevatedButton.styleFrom(
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              elevation: 4,
-                            ),
+                            showBorder: true,
                             child: _isLoading
                                 ? const SizedBox(
                                     height: 24,
                                     width: 24,
-                                    child: CircularProgressIndicator(
+                                    child: const CircularProgressIndicator(
                                       strokeWidth: 2.5,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4A7A9C)),
                                     ),
                                   )
                                 : const Text(
@@ -307,6 +303,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
                                       letterSpacing: 0.5,
+                                      color: Color(0xFF4A7A9C),
                                     ),
                                   ),
                           ),
@@ -319,7 +316,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           ),
         ),
-      ),
-    );
+      );
   }
 }

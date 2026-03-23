@@ -7,7 +7,6 @@ import 'package:workmanager/workmanager.dart';
 import 'core/services/api_service.dart';
 import 'features/about/presentation/screens/about_screen.dart';
 import 'core/services/sabbath_reminder_service.dart';
-import 'features/sabbath/presentation/screens/sabbath_detail_screen.dart';
 import 'core/services/sunset_service.dart';
 import 'features/auth/presentation/providers/user_provider.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
@@ -16,6 +15,8 @@ import 'features/home/presentation/screens/home_screen.dart';
 import 'features/bulletin/presentation/screens/edit_bulletin_screen.dart';
 import 'features/giving/presentation/screens/giving_screen.dart';
 import 'features/volunteer/presentation/screens/volunteer_screen.dart';
+import 'features/history/presentation/screens/history_screen.dart';
+import 'features/admin/presentation/screens/admin_manage_users_screen.dart';
 import 'features/bulletin/data/bulletin_data.dart';
 import 'features/bulletin/presentation/widgets/bulletin_item_model.dart';
 
@@ -59,13 +60,10 @@ void main() async {
     // 初始化API服务
     ApiService().init();
 
-    // 初始化 bulletin 数据
-    try {
-      await initializeBulletins();
-    } catch (e) {
+    // 初始化 bulletin 数据（不阻塞主线程）
+    initializeBulletins().catchError((e) {
       debugPrint('Failed to initialize bulletins: $e');
-      // 不阻止应用启动
-    }
+    });
 
     // 初始化通知（添加错误处理）
     try {
@@ -139,10 +137,7 @@ class ScaffoldWithNavBar extends StatelessWidget {
             icon: Icon(Icons.volunteer_activism),
             label: 'Giving',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.access_time),
-            label: 'Sabbath',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.history), label: 'History'),
           BottomNavigationBarItem(icon: Icon(Icons.groups), label: 'Volunteer'),
           BottomNavigationBarItem(icon: Icon(Icons.info), label: 'About'),
         ],
@@ -180,10 +175,14 @@ final GoRouter _router = GoRouter(
                     final extra = state.extra as Map?;
                     return EditBulletinScreen(
                       item: extra?['item'],
-                      onSave: extra?['refresh'],
                       dayOfWeek: extra?['dayOfWeek'],
                     );
                   },
+                ),
+                // 管理用户页面（仅 admin）
+                GoRoute(
+                  path: 'admin/manage-users',
+                  builder: (context, state) => const AdminManageUsersScreen(),
                 ),
               ],
             ),
@@ -198,12 +197,12 @@ final GoRouter _router = GoRouter(
             ),
           ],
         ),
-        // 安息日分支
+        // 历史记录分支
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: '/sabbath',
-              builder: (context, state) => const SabbathDetailScreen(),
+              path: '/history',
+              builder: (context, state) => const HistoryScreen(),
             ),
           ],
         ),

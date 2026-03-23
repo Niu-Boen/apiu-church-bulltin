@@ -17,6 +17,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _guestNameController = TextEditingController();
   bool _isPasswordVisible = false;
   bool _isLoading = false;
 
@@ -26,12 +27,13 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
+    _guestNameController.dispose();
     super.dispose();
   }
 
   Future<void> _login(String role) async {
     if (role == 'guest') {
-      _showVisitorNotice();
+      _showVisitorNameDialog();
       return;
     }
 
@@ -102,21 +104,67 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _showVisitorNotice() {
+  void _showVisitorNameDialog() {
+    _guestNameController.clear();
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) => AlertDialog(
-        title: const Text('Visitor Access'),
-        content: const Text(
-          'As a visitor, you will have read-only access to the bulletin and giving information.',
+        title: const Text('Welcome, Visitor!'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Please enter your name so we can welcome you properly.',
+            ),
+            const SizedBox(height: 16),
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFFE3E5E7),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: const Color(0xFFB6B9BA).withValues(alpha: 0.3),
+                  width: 1,
+                ),
+              ),
+              child: TextFormField(
+                controller: _guestNameController,
+                autofocus: true,
+                decoration: InputDecoration(
+                  labelText: 'Your Name',
+                  filled: true,
+                  fillColor: Colors.transparent,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                ),
+                validator: (v) => v == null || v.isEmpty ? 'Please enter your name' : null,
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('CANCEL'),
+          ),
+          TextButton(
             onPressed: () {
+              final guestName = _guestNameController.text.trim();
+              if (guestName.isEmpty) {
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  const SnackBar(content: Text('Please enter your name')),
+                );
+                return;
+              }
               Navigator.pop(dialogContext);
-              if (mounted) context.go('/home', extra: 'guest');
+              if (mounted) {
+                context.read<UserProvider>().loginAsGuest(guestName);
+                context.go('/home');
+              }
             },
-            child: const Text('I UNDERSTAND'),
+            child: const Text('CONTINUE'),
           ),
         ],
       ),
@@ -207,65 +255,87 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                             const SizedBox(height: 32),
-                            TextFormField(
-                              controller: _usernameController,
-                              enabled: !_isLoading,
-                              decoration: InputDecoration(
-                                prefixIcon: const Icon(Icons.person_outline_rounded),
-                                labelText: 'Username',
-                                filled: true,
-                                fillColor: theme.colorScheme.surface.withValues(alpha: 0.5),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                  borderSide: BorderSide.none,
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                  borderSide: BorderSide(color: theme.primaryColor.withValues(alpha: 0.2)),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                  borderSide: BorderSide(color: theme.primaryColor, width: 2),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE3E5E7),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: const Color(0xFFB6B9BA).withValues(alpha: 0.3),
+                                  width: 1,
                                 ),
                               ),
-                              validator: (v) =>
-                                  v == null || v.isEmpty ? 'Required' : null,
+                              child: TextFormField(
+                                controller: _usernameController,
+                                enabled: !_isLoading,
+                                decoration: InputDecoration(
+                                  prefixIcon: const Icon(Icons.person_outline_rounded),
+                                  labelText: 'Username',
+                                  filled: true,
+                                  fillColor: Colors.transparent,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                ),
+                                validator: (v) =>
+                                    v == null || v.isEmpty ? 'Required' : null,
+                              ),
                             ),
                             const SizedBox(height: 20),
-                            TextFormField(
-                              controller: _passwordController,
-                              obscureText: !_isPasswordVisible,
-                              enabled: !_isLoading,
-                              decoration: InputDecoration(
-                                prefixIcon: const Icon(Icons.shield_outlined),
-                                labelText: 'Password',
-                                filled: true,
-                                fillColor: theme.colorScheme.surface.withValues(alpha: 0.5),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                  borderSide: BorderSide.none,
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                  borderSide: BorderSide(color: theme.primaryColor.withValues(alpha: 0.2)),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                  borderSide: BorderSide(color: theme.primaryColor, width: 2),
-                                ),
-                                suffixIcon: IconButton(
-                                  icon: Icon(
-                                    _isPasswordVisible
-                                        ? Icons.visibility
-                                        : Icons.visibility_off,
-                                    color: theme.hintColor,
-                                  ),
-                                  onPressed: () => setState(() =>
-                                      _isPasswordVisible = !_isPasswordVisible),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE3E5E7),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: const Color(0xFFB6B9BA).withValues(alpha: 0.3),
+                                  width: 1,
                                 ),
                               ),
-                              validator: (v) =>
-                                  v == null || v.isEmpty ? 'Required' : null,
+                              child: TextFormField(
+                                controller: _passwordController,
+                                obscureText: !_isPasswordVisible,
+                                enabled: !_isLoading,
+                                decoration: InputDecoration(
+                                  prefixIcon: const Icon(Icons.shield_outlined),
+                                  labelText: 'Password',
+                                  filled: true,
+                                  fillColor: Colors.transparent,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      _isPasswordVisible
+                                          ? Icons.visibility
+                                          : Icons.visibility_off,
+                                      color: theme.hintColor,
+                                    ),
+                                    onPressed: () => setState(() =>
+                                        _isPasswordVisible = !_isPasswordVisible),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                ),
+                                validator: (v) =>
+                                    v == null || v.isEmpty ? 'Required' : null,
+                              ),
                             ),
                             const SizedBox(height: 32),
                             SizedBox(
@@ -273,6 +343,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               height: 56,
                               child: SoftButton(
                                 onPressed: _isLoading ? null : () => _login('member'),
+                                showBorder: true,
                                 child: _isLoading
                                     ? const SizedBox(
                                         height: 24,
@@ -299,6 +370,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               height: 56,
                               child: SoftButton(
                                 onPressed: _isLoading ? null : () => _login('guest'),
+                                showBorder: true,
                                 child: Text(
                                   'CONTINUE AS GUEST',
                                   style: TextStyle(

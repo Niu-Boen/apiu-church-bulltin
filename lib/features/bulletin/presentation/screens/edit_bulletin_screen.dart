@@ -7,10 +7,9 @@ import '../../../../core/services/bulletin_storage_service.dart';
 
 class EditBulletinScreen extends StatefulWidget {
   final BulletinItem? item;
-  final Function? onSave;
   final int? dayOfWeek; // 5 = Friday, 6 = Saturday
 
-  const EditBulletinScreen({super.key, this.item, this.onSave, this.dayOfWeek});
+  const EditBulletinScreen({super.key, this.item, this.dayOfWeek});
 
   @override
   State<EditBulletinScreen> createState() => _EditBulletinScreenState();
@@ -147,7 +146,6 @@ class _EditBulletinScreenState extends State<EditBulletinScreen> {
         }
       }
 
-      widget.onSave?.call();
       if (mounted) {
         _showSnackBar('Saved successfully!');
         context.pop();
@@ -167,7 +165,6 @@ class _EditBulletinScreenState extends State<EditBulletinScreen> {
         // 从本地存储删除
         await BulletinStorageService.deleteBulletin(widget.item!);
 
-        widget.onSave?.call();
         if (mounted) {
           _showSnackBar('Deleted successfully!');
           context.pop();

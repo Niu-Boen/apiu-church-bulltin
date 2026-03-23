@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import '../../../../core/services/visitor_storage_service.dart';
+import '../providers/user_provider.dart';
 
 class GuestScreen extends StatefulWidget {
   const GuestScreen({super.key});
@@ -45,12 +48,37 @@ class _GuestScreenState extends State<GuestScreen> {
     );
   }
 
-  void _submit() {
+  void _submit() async {
     if (!_validateInputs()) return;
 
-    // 同步操作，但为保持一致性添加 mounted 检查
-    if (context.mounted) {
-      context.go('/');
+    final name = _nameController.text.trim();
+
+    // 记录访客访问
+    final visitor = await VisitorStorageService.recordVisitor(name);
+
+    if (visitor != null && context.mounted) {
+      // 设置访客信息到 Provider
+      context.read<UserProvider>().loginAsGuest(name);
+
+      // 显示欢迎信息
+      final message = visitor.visitCount > 1
+          ? 'Welcome back, $name! This is visit #${visitor.visitCount}'
+          : 'Welcome, $name!';
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+
+      // 导航到首页
+      if (context.mounted) {
+        context.go('/home');
+      }
+    } else if (context.mounted) {
+      context.go('/home');
     }
   }
 

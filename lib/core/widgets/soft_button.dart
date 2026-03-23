@@ -15,6 +15,7 @@ class SoftButton extends StatelessWidget {
   final double? height;
   final EdgeInsetsGeometry? padding;
   final bool isTabSelected; // 用于 TabBar 样式
+  final bool showBorder; // 是否显示边框
 
   const SoftButton({
     super.key,
@@ -26,6 +27,7 @@ class SoftButton extends StatelessWidget {
     this.height,
     this.padding,
     this.isTabSelected = false,
+    this.showBorder = false,
   });
 
   @override
@@ -50,6 +52,12 @@ class SoftButton extends StatelessWidget {
           stops: const [0.0, 1.0],
         ),
         borderRadius: radius,
+        border: showBorder
+            ? Border.all(
+                color: const Color(0xFFB6B9BA).withValues(alpha: 0.3),
+                width: 1,
+              )
+            : null,
         // 外阴影: 左上浅色, 右下深色 - 使用新的阴影参数
         boxShadow: [
           // 左上: 浅色阴影 (#fafafd)
