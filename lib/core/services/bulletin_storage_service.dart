@@ -88,9 +88,11 @@ class BulletinStorageService {
       if (existingIndex != -1) {
         // 如果已存在，更新该条目
         bulletins[existingIndex] = item;
+        debugPrint('Updated existing bulletin: ${item.title}');
       } else {
         // 添加新条目
         bulletins.add(item);
+        debugPrint('Added new bulletin: ${item.title}');
 
         // 限制最多保存20条记录
         if (bulletins.length > 20) {
@@ -99,6 +101,7 @@ class BulletinStorageService {
           final excessCount = bulletins.length - 20;
           // 删除多余的条目（保留最新的20条）
           bulletins.removeRange(0, excessCount);
+          debugPrint('Removed $excessCount old bulletins to maintain 20 limit');
         }
       }
 

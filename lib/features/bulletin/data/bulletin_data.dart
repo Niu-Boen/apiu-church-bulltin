@@ -54,19 +54,22 @@ final List<BulletinItem> _defaultBulletins = [
 /// 从本地存储加载数据,如果没有则使用默认数据
 Future<void> initializeBulletins() async {
   try {
-    // 先使用默认数据，确保应用可以立即启动
-    bulletinItems = List.from(_defaultBulletins);
-
-    // 异步加载数据，不阻塞主线程
+    // 先尝试从本地存储加载数据
     final loadedBulletins = await BulletinStorageService.loadBulletins();
 
     if (loadedBulletins.isNotEmpty) {
       // 成功加载数据，使用加载的数据
       bulletinItems = loadedBulletins;
+      debugPrint('Loaded ${loadedBulletins.length} bulletins from storage');
+    } else {
+      // 没有本地数据，使用默认数据
+      bulletinItems = List.from(_defaultBulletins);
+      debugPrint('Using default bulletins (${_defaultBulletins.length} items)');
     }
   } catch (e) {
     debugPrint('Failed to load bulletins from storage: $e');
-    // 加载失败，继续使用默认数据
+    // 加载失败，使用默认数据
+    bulletinItems = List.from(_defaultBulletins);
   }
 }
 

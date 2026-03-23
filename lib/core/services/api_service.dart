@@ -111,6 +111,33 @@ class ApiService {
     );
   }
 
+  /// POST请求（公开，不需要token）
+  Future<Response> postPublic(
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+    Options? options,
+  }) async {
+    // 创建临时Dio实例，不包含token
+    final publicDio = Dio(BaseOptions(
+      baseUrl: _baseUrl,
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(seconds: 30),
+      sendTimeout: const Duration(seconds: 30),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    ));
+
+    return await publicDio.post(
+      path,
+      data: data,
+      queryParameters: queryParameters,
+      options: options,
+    );
+  }
+
   /// PUT请求
   Future<Response> put(
     String path, {

@@ -73,7 +73,8 @@ class AuthApiService {
     required String fullName,
   }) async {
     try {
-      final response = await _api.post(
+      // 使用公开请求，不包含token
+      final response = await _api.postPublic(
         '/auth/register',
         data: {
           'username': username,
