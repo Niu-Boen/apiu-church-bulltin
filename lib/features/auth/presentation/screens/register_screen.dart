@@ -292,7 +292,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ? const SizedBox(
                                     height: 24,
                                     width: 24,
-                                    child: const CircularProgressIndicator(
+                                    child: CircularProgressIndicator(
                                       strokeWidth: 2.5,
                                       valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4A7A9C)),
                                     ),

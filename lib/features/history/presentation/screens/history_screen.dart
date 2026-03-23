@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../auth/presentation/providers/user_provider.dart';
-import '../../../core/services/sabbath_calculator.dart';
+import '../../../../core/services/sabbath_calculator.dart';
 import '../../../bulletin/presentation/widgets/bulletin_item_model.dart';
 import '../../data/history_storage_service.dart';
 import '../../domain/models/history_record.dart';
@@ -189,7 +188,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     ),
                   )
                 else
-                  ...history.bulletins.map((bulletin) => _buildBulletinItem(theme, bulletin)),
+                  ...history.bulletins.map((bulletin) {
+                    try {
+                      return _buildBulletinItem(theme, bulletin);
+                    } catch (e) {
+                      return const SizedBox.shrink();
+                    }
+                  }),
               ],
             ),
           ),

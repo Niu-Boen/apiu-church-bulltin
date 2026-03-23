@@ -1,4 +1,5 @@
-import '../../bulletin/presentation/widgets/bulletin_item_model.dart';
+import 'package:flutter/material.dart';
+import '../../../bulletin/presentation/widgets/bulletin_item_model.dart';
 
 /// 历史记录数据模型
 /// 用于存储某个日期的公告和时间表
